@@ -1,10 +1,15 @@
 <div align="center">
+
 <h1><strong>🎬 Short-Films 20K (SF20K)</br>Story-level Video Understanding from 20K Short Films</strong></h1>
+
 [![Paper](https://img.shields.io/badge/arXiv-2406.10221-b31b1b.svg)](https://arxiv.org/abs/2406.10221)
 [![Dataset](https://img.shields.io/badge/Hugging%20Face-Datasets-yellow?logo=huggingface)](https://huggingface.co/datasets/rghermi/sf20k)
 [![Project Website](https://img.shields.io/badge/Project-Website-blue)](https://ridouaneg.github.io/sf20k.html)
+
 <br>
-<img src="https://github.com/ridouaneg/sf20k/blob/main/data/competition_sample_2.jpg?raw=true" alt="Competition sample image" width="66%">
+
+<img src="https://github.com/ridouaneg/sf20k/blob/main/data/competition_sample_2.jpg?raw=true" alt="Competition sample image" width="100%">
+
 </div>
 
 ## 🎬 About the Dataset
