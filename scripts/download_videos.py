@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import os
+import time
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
@@ -109,6 +110,8 @@ def save_failed_videos_to_file(failed_videos: dict, filepath):
 
 
 def main(args):
+    start_time = time.time()
+    
     # Setup
     video_dir = os.path.join(args.video_dir, f"{args.resolution}p")
     os.makedirs(video_dir, exist_ok=True)
@@ -167,6 +170,21 @@ def main(args):
         save_failed_videos_to_file(failed_videos, failed_file_path)
         print(f"\n💾 Saved {len(failed_videos)} failed videos to: {failed_file_path}")
 
+    # Calculate total runtime
+    end_time = time.time()
+    duration_seconds = end_time - start_time
+    hours = int(duration_seconds // 3600)
+    minutes = int((duration_seconds % 3600) // 60)
+    seconds = int(duration_seconds % 60)
+    
+    # Format duration string
+    if hours > 0:
+        duration_str = f"{hours}h {minutes}m {seconds}s"
+    elif minutes > 0:
+        duration_str = f"{minutes}m {seconds}s"
+    else:
+        duration_str = f"{seconds}s"
+
     # --- Final Logging ---
     print("\n" + "="*50)
     print("📊 DOWNLOAD SUMMARY")
@@ -178,6 +196,7 @@ def main(args):
     print(f"⏩ Skipped (already exist): {skipped_count}")
     print(f"❌ Failed to Download:     {failed_count}")
     print("-" * 25)
+    print(f"⏱️  Total Runtime:          {duration_str}")
     print("="*50)
 
 
