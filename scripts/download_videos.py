@@ -17,6 +17,7 @@ def parse_args():
     parser.add_argument("--skip_existing", action="store_true", help="Skip existing videos")
     # New argument for workers
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel downloads")
+    parser.add_argument("--use-aria2c", action="store_true", help="Use aria2c as external downloader for faster downloads")
     return parser.parse_args()
 
 def download_single_video(row, args, video_dir):
@@ -33,7 +34,7 @@ def download_single_video(row, args, video_dir):
     if os.path.exists(video_path) and args.skip_existing:
         return 2, video_id, video_url
 
-    # Construct yt-dlp command with ARIA2 optimizations
+    # Construct yt-dlp command
     cmd_args = [
         "yt-dlp",
         "-f", f"bestvideo[height<={args.resolution}]+bestaudio/best[height<={args.resolution}]",
@@ -41,12 +42,16 @@ def download_single_video(row, args, video_dir):
         "--merge-output-format", "mp4",
         "--no-warnings",
         "--ignore-errors",
-        # --- SPEED OPTIMIZATIONS ---
-        "--external-downloader", "aria2c",
-        "--external-downloader-args", "aria2c:-j 4 -x 4 -s 4 -k 1M",
-        # ---------------------------
-        video_url
     ]
+    
+    # Add ARIA2 optimizations if requested
+    if args.use_aria2c:
+        cmd_args.extend([
+            "--external-downloader", "aria2c",
+            "--external-downloader-args", "aria2c:-j 4 -x 4 -s 4 -k 1M",
+        ])
+    
+    cmd_args.append(video_url)
     
     # Capture output to avoid console spam in parallel mode
     result = subprocess.run(cmd_args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -72,7 +77,8 @@ def main(args):
     skipped_count = 0
     failed_videos = {}
 
-    print(f"Starting download with {args.workers} workers using aria2c...")
+    downloader_info = "using aria2c" if args.use_aria2c else "using default downloader"
+    print(f"Starting download with {args.workers} workers {downloader_info}...")
 
     # ThreadPool execution
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
