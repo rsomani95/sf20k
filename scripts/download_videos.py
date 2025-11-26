@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from datasets import load_dataset
 
@@ -13,8 +14,43 @@ def parse_args():
     parser.add_argument("--skip_existing", action="store_true", help="Skip downloading videos if they already exist in the target directory")
     parser.add_argument("--silence_errors", action="store_true", help="Silence errors")
     parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for downloading videos")
+    parser.add_argument("--workers", type=int, default=1, help="Number of parallel workers for downloading videos")
     parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to download (for debug runs). If None, downloads all videos.")
     return parser.parse_args()
+
+
+def download_video(row, video_dir, args):
+    """Download a single video. Returns tuple (video_id, status, video_url) where status is 'success', 'failed', or 'skipped'."""
+    video_id = row.video_id
+    video_url = row.video_url
+    video_path = os.path.join(video_dir, f"{video_id}.mp4")
+
+    # Skip if video already exists
+    if os.path.exists(video_path) and args.skip_existing:
+        return (video_id, 'skipped', video_url)
+
+    # Construct yt-dlp command
+    cmd_args = [
+        "yt-dlp",
+        "-S", "vcodec:h264,res,acodec:m4a",  # Quicktime compatible; h264 decodes faster as well
+        "-f", f"bestvideo[height<={args.resolution}]+bestaudio/best[height<={args.resolution}]",
+        "-o", video_path,
+        #"--quiet",
+        "--concurrent-fragments", str(args.threads),
+        video_url
+    ]
+    if args.silence_errors:
+        cmd_args.extend([
+            "--no-warnings", "--ignore-errors"
+        ])
+
+    # Execute command and check for errors
+    result = subprocess.run(cmd_args, capture_output=True)
+
+    if result.returncode == 0:
+        return (video_id, 'success', video_url)
+    else:
+        return (video_id, 'failed', video_url)
 
 
 def main(args):
@@ -33,40 +69,28 @@ def main(args):
     skipped_count = 0
     failed_videos = {}
 
-    # Download loop
-    for _, row in tqdm(df.iterrows(), total=total_videos, desc="Downloading Videos"):
-        video_id = row.video_id
-        video_url = row.video_url
-        video_path = os.path.join(video_dir, f"{video_id}.mp4")
+    # Parallel download using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        # Submit all download tasks
+        future_to_row = {
+            executor.submit(download_video, row, video_dir, args): row
+            for _, row in df.iterrows()
+        }
 
-        # Skip if video already exists
-        if os.path.exists(video_path) and args.skip_existing:
-            skipped_count += 1
-            continue
-
-        # Construct yt-dlp command
-        cmd_args = [
-            "yt-dlp",
-            "-S", "vcodec:h264,res,acodec:m4a",  # Quicktime compatible; h264 decodes faster as well
-            "-f", f"bestvideo[height<={args.resolution}]+bestaudio/best[height<={args.resolution}]",
-            "-o", video_path,
-            #"--quiet",
-            "--concurrent-fragments", str(args.threads),
-            video_url
-        ]
-        if args.silence_errors:
-            cmd_args.extend([
-                "--no-warnings", "--ignore-errors"
-            ])
-
-        # Execute command and check for errors
-        result = subprocess.run(cmd_args)
-
-        if result.returncode == 0:
-            downloaded_count += 1
-        else:
-            failed_count += 1
-            failed_videos[video_id] = video_url
+        # Process completed downloads with progress bar
+        with tqdm(total=total_videos, desc="Downloading Videos") as pbar:
+            for future in as_completed(future_to_row):
+                video_id, status, video_url = future.result()
+                
+                if status == 'success':
+                    downloaded_count += 1
+                elif status == 'failed':
+                    failed_count += 1
+                    failed_videos[video_id] = video_url
+                elif status == 'skipped':
+                    skipped_count += 1
+                
+                pbar.update(1)
 
     # --- Final Logging ---
     print("\n" + "="*50)
