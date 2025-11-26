@@ -11,6 +11,8 @@ def parse_args():
     parser.add_argument("--video_dir", type=str, default="../data/videos/")
     parser.add_argument("--resolution", type=int, default=360, choices=[144, 240, 360, 480, 720, 1080], help="Resolution for video download (e.g., 360, 720, 1080)")
     parser.add_argument("--skip_existing", action="store_true", help="Skip downloading videos if they already exist in the target directory")
+    parser.add_argument("--silence_errors", action="store_true", help="Silence errors")
+    parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for downloading videos")
     return parser.parse_args()
 
 
@@ -46,11 +48,14 @@ def main(args):
             "-o", video_path,
             "--merge-output-format", "mp4",
             #"--quiet",
-            "--no-warnings",
-            "--ignore-errors",
+            "--concurrent-fragments", str(args.threads),
             video_url
         ]
-        
+        if args.silence_errors:
+            cmd_args.extend([
+                "--no-warnings", "--ignore-errors"
+            ])
+
         # Execute command and check for errors
         result = subprocess.run(cmd_args)
 
