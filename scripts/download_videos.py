@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument("--skip_existing", action="store_true", help="Skip downloading videos if they already exist in the target directory")
     parser.add_argument("--silence_errors", action="store_true", help="Silence errors")
     parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for downloading videos")
+    parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to download (for debug runs). If None, downloads all videos.")
     return parser.parse_args()
 
 
@@ -22,6 +23,8 @@ def main(args):
     os.makedirs(video_dir, exist_ok=True)
     df = load_dataset("rghermi/sf20k", split=args.split).to_pandas()
     df = df[['video_id', 'video_url']].drop_duplicates()
+    if args.max_videos is not None:
+        df = df.head(args.max_videos)
     total_videos = len(df)
 
     # Initialize counts
