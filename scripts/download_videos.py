@@ -47,9 +47,9 @@ def main(args):
         # Construct yt-dlp command
         cmd_args = [
             "yt-dlp",
+            "-S", "vcodec:h264,res,acodec:m4a",  # Quicktime compatible; h264 decodes faster as well
             "-f", f"bestvideo[height<={args.resolution}]+bestaudio/best[height<={args.resolution}]",
             "-o", video_path,
-            "--merge-output-format", "mp4",
             #"--quiet",
             "--concurrent-fragments", str(args.threads),
             video_url
