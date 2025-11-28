@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument("--workers", type=int, default=1, help="Number of parallel workers for downloading videos")
     parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to download (for debug runs). If None, downloads all videos.")
     parser.add_argument("--failed-videos-file", type=str, default=None, help="Path to CSV file containing failed video IDs to retry. If provided, only downloads videos listed in this file. CSV should have columns: video_id, video_url (optional), error_reason (optional)")
+    parser.add_argument("--cookies", type=str, default=None, help="Path to a .txt file containing cookies. Ignored if not passed")
     return parser.parse_args()
 
 
@@ -45,6 +46,10 @@ def download_video(row, video_dir, args):
     if args.silence_errors:
         cmd_args.extend([
             "--no-warnings", "--ignore-errors"
+        ])
+    if args.cookies:
+        cmd_args.extend([
+            "--cookies", args.cookies
         ])
 
     # Execute command and check for errors
